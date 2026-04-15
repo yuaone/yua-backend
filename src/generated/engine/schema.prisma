@@ -1,0 +1,384 @@
+// ------------------------------------------------------
+//  ENGINE DATABASE (PostgreSQL)
+//  - Engine Instance
+//  - Engine Binding (SSOT)
+//  - Enterprise Policy Layer (SSOT)
+// ------------------------------------------------------
+
+generator engineClient {
+  provider = "prisma-client-js"
+  output   = "../generated/engine"
+}
+
+datasource pg {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------
+// ENUMS
+// ------------------------------------------------------
+
+enum InstanceStatus {
+  CREATED
+  RUNNING
+  STOPPED
+  ERROR
+}
+
+enum EngineType {
+  chat
+  emotion
+  memory
+  finance
+}
+
+// ------------------------------------------------------
+// ENGINE INSTANCE
+// ------------------------------------------------------
+
+model Instance {
+  id        String   @id @default(cuid())
+  name      String
+  ownerId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cpuTierId    String
+  nodeTierId   String
+  engineTierId String
+  qpuTierId    String?
+  omegaTierId  String?
+
+  status    InstanceStatus @default(CREATED)
+  autoscale Boolean        @default(false)
+
+  cpuTier    CpuTier    @relation(fields: [cpuTierId], references: [id])
+  nodeTier   NodeTier   @relation(fields: [nodeTierId], references: [id])
+  engineTier EngineTier @relation(fields: [engineTierId], references: [id])
+  qpuTier    QpuTier?   @relation(fields: [qpuTierId], references: [id])
+  omegaTier  OmegaTier? @relation(fields: [omegaTierId], references: [id])
+
+  // 🔑 Engine Binding (SSOT)
+  engines InstanceEngine[]
+
+  // 🛡 Enterprise Policy (SSOT)
+  policy InstancePolicy?
+
+  // 🔐 Terminal Sessions (STEP 4-2 SSOT)
+  terminalSessions TerminalSession[]
+
+  snapshots       Snapshot[]
+  logs            InstanceLog[]
+  billingRecords  BillingRecord[]
+  executionGraphs ExecutionGraph[]
+
+  @@map("engine_instances")
+}
+
+// ------------------------------------------------------
+// INSTANCE ENGINE BINDING (SSOT 핵심)
+// ------------------------------------------------------
+
+model InstanceEngine {
+  id            String     @id @default(cuid())
+  instanceId    String
+  engineType    EngineType
+  enabled       Boolean    @default(true)
+  defaultModel  String
+  allowedModels Json
+  createdAt     DateTime   @default(now())
+
+  instance Instance @relation(fields: [instanceId], references: [id])
+
+  @@unique([instanceId, engineType])
+  @@map("instance_engines")
+}
+
+// ------------------------------------------------------
+// 🛡 ENTERPRISE POLICY LAYER (SSOT FINAL)
+// ------------------------------------------------------
+
+model InstancePolicy {
+  id         String @id @default(cuid())
+  instanceId String @unique
+
+  allowChat    Boolean @default(true)
+  allowEmotion Boolean @default(true)
+  allowMemory  Boolean @default(true)
+  allowFinance Boolean @default(false)
+
+  allowTerminal Boolean @default(false)
+  allowSSH      Boolean @default(false)
+
+  maxTokensPerDay   Int?
+  maxRequestsPerDay Int?
+
+  ipWhitelist Json?
+  regionLock  String?
+
+  auditRequired Boolean @default(false)
+  piiStrictMode Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  instance Instance @relation(fields: [instanceId], references: [id])
+
+  @@map("instance_policies")
+}
+
+// ------------------------------------------------------
+// TIERS
+// ------------------------------------------------------
+
+model CpuTier {
+  id        String     @id @default(cuid())
+  name      String
+  cores     Int
+  price     Float
+  instances Instance[]
+}
+
+model NodeTier {
+  id        String     @id @default(cuid())
+  name      String
+  nodes     Int
+  price     Float
+  instances Instance[]
+}
+
+model EngineTier {
+  id        String     @id @default(cuid())
+  name      String
+  profile   String
+  price     Float
+  instances Instance[]
+}
+
+model QpuTier {
+  id        String     @id @default(cuid())
+  name      String
+  parallel  Boolean
+  price     Float
+  instances Instance[]
+}
+
+model OmegaTier {
+  id        String     @id @default(cuid())
+  name      String
+  cognitive Boolean
+  price     Float
+  instances Instance[]
+}
+
+// ------------------------------------------------------
+// SNAPSHOT / LOGS / BILLING / EXECUTION GRAPH
+// ------------------------------------------------------
+
+model Snapshot {
+  id         String   @id @default(cuid())
+  instanceId String
+  metadata   Json
+  createdAt  DateTime @default(now())
+
+  instance Instance @relation(fields: [instanceId], references: [id])
+}
+
+model InstanceLog {
+  id         String   @id @default(cuid())
+  instanceId String
+  event      String
+  detail     Json
+  createdAt  DateTime @default(now())
+
+  instance Instance @relation(fields: [instanceId], references: [id])
+}
+
+model BillingRecord {
+  id         String   @id @default(cuid())
+  instanceId String
+  amount     Float
+  reason     String
+  createdAt  DateTime @default(now())
+
+  instance Instance @relation(fields: [instanceId], references: [id])
+}
+
+model ExecutionGraph {
+  id         String   @id @default(cuid())
+  instanceId String
+  graph      Json
+  createdAt  DateTime @default(now())
+
+  instance Instance @relation(fields: [instanceId], references: [id])
+}
+
+// ------------------------------------------------------
+// LEGACY TABLE (기존 유지)
+// ------------------------------------------------------
+
+model snapshot_history {
+  id            Int      @id @default(autoincrement())
+  snapshot_name String
+  instance_id   String?
+  created_at    DateTime @default(now())
+}
+
+// ------------------------------------------------------
+// TERMINAL SESSION TOKEN (STEP 4-2 SSOT)
+// ------------------------------------------------------
+
+model TerminalSession {
+  id         String @id @default(cuid())
+  token      String @unique
+  instanceId String
+  userId     String
+  scope      String
+
+  issuedAt       DateTime  @default(now())
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  lastVerifiedAt DateTime?
+
+  instance Instance @relation(fields: [instanceId], references: [id])
+
+  @@index([token])
+  @@index([instanceId])
+  @@map("terminal_sessions")
+}
+
+// ------------------------------------------------------
+// BILLING (LemonSqueezy) — 2026-04-11
+// ------------------------------------------------------
+
+model BillingSubscription {
+  id                 BigInt    @id @default(autoincrement())
+  userId             BigInt    @map("user_id")
+  workspaceId        BigInt?   @map("workspace_id")
+  provider           String    @default("lemonsqueezy")
+  lsSubscriptionId   String?   @map("ls_subscription_id")
+  lsCustomerId       String?   @map("ls_customer_id")
+  lsVariantId        String?   @map("ls_variant_id")
+  lsOrderId          String?   @map("ls_order_id")
+  planTier           String    @map("plan_tier")
+  status             String
+  currentPeriodStart DateTime? @map("current_period_start") @pg.Timestamptz(6)
+  currentPeriodEnd   DateTime? @map("current_period_end") @pg.Timestamptz(6)
+  cancelAtPeriodEnd  Boolean   @default(false) @map("cancel_at_period_end")
+  updateUrl          String?   @map("update_url")
+  cancelUrl          String?   @map("cancel_url")
+  trialEndsAt        DateTime? @map("trial_ends_at") @pg.Timestamptz(6)
+  createdAt          DateTime  @default(now()) @map("created_at") @pg.Timestamptz(6)
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @pg.Timestamptz(6)
+
+  events BillingEvent[]
+
+  @@unique([lsSubscriptionId], map: "idx_billing_sub_ls_id")
+  @@index([userId, status], map: "idx_billing_sub_user_status")
+  @@map("billing_subscriptions")
+}
+
+model BillingEvent {
+  id             BigInt   @id @default(autoincrement())
+  lsEventId      String   @unique @map("ls_event_id")
+  eventName      String   @map("event_name")
+  userId         BigInt?  @map("user_id")
+  subscriptionId BigInt?  @map("subscription_id")
+  payload        Json
+  processedAt    DateTime @default(now()) @map("processed_at") @pg.Timestamptz(6)
+
+  subscription BillingSubscription? @relation(fields: [subscriptionId], references: [id])
+
+  @@index([eventName, processedAt(sort: Desc)], map: "idx_billing_events_event_name")
+  @@index([userId, processedAt(sort: Desc)], map: "idx_billing_events_user")
+  @@map("billing_events")
+}
+
+model WorkspaceUsageLog {
+  id              BigInt   @id @default(autoincrement())
+  workspaceId     BigInt   @map("workspace_id")
+  userId          BigInt   @map("user_id")
+  threadId        BigInt?  @map("thread_id")
+  messageId       BigInt?  @map("message_id")
+  model           String
+  resolved        String
+  inputTokens     Int      @default(0) @map("input_tokens")
+  outputTokens    Int      @default(0) @map("output_tokens")
+  cachedTokens    Int      @default(0) @map("cached_tokens")
+  reasoningTokens Int      @default(0) @map("reasoning_tokens")
+  costUsd         Decimal  @map("cost_usd") @pg.Decimal(12, 8)
+  planTier        String?  @map("plan_tier")
+  computeTier     String?  @map("compute_tier")
+  createdAt       DateTime @default(now()) @map("created_at") @pg.Timestamptz(6)
+
+  @@index([userId, createdAt(sort: Desc)], map: "idx_usage_log_user_created")
+  @@index([workspaceId, createdAt(sort: Desc)], map: "idx_usage_log_workspace_created")
+  @@map("workspace_usage_log")
+}
+
+// ------------------------------------------------------
+// SETTINGS v2 — 2026-04-11
+// ------------------------------------------------------
+
+model UserUsageWeekly {
+  userId       BigInt   @map("user_id")
+  // KST calendar day (Monday) — DATE, not TIMESTAMPTZ (represents a day, not an instant)
+  weekStartKst DateTime @map("week_start_kst") @pg.Date
+  messages     Int      @default(0)
+  costUsd      Decimal  @default(0) @map("cost_usd") @pg.Decimal(12, 6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @pg.Timestamptz(6)
+
+  @@id([userId, weekStartKst])
+  @@index([weekStartKst(sort: Desc)], map: "idx_usage_weekly_week")
+  @@map("user_usage_weekly")
+}
+
+model UserConnector {
+  id           BigInt   @id @default(autoincrement())
+  userId       BigInt   @map("user_id")
+  provider     String
+  status       String
+  accessToken  String?  @map("access_token")
+  refreshToken String?  @map("refresh_token")
+  scopes       String[]
+  externalId   String?  @map("external_id")
+  connectedAt  DateTime @default(now()) @map("connected_at") @pg.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @pg.Timestamptz(6)
+
+  @@unique([userId, provider], map: "idx_user_connectors_unique")
+  @@map("user_connectors")
+}
+
+model UserBillingCap {
+  userId             BigInt   @id @map("user_id")
+  monthlyCapUsd      Decimal? @map("monthly_cap_usd") @pg.Decimal(10, 2)
+  autoRefreshEnabled Boolean  @default(false) @map("auto_refresh_enabled")
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @pg.Timestamptz(6)
+
+  @@map("user_billing_cap")
+}
+
+model UserSession {
+  sessionId   String    @id @map("session_id")
+  userId      BigInt    @map("user_id")
+  deviceLabel String?   @map("device_label")
+  ipAddress   String?   @map("ip_address") @pg.Inet
+  userAgent   String?   @map("user_agent")
+  createdAt   DateTime  @default(now()) @map("created_at") @pg.Timestamptz(6)
+  lastSeenAt  DateTime  @default(now()) @map("last_seen_at") @pg.Timestamptz(6)
+  revokedAt   DateTime? @map("revoked_at") @pg.Timestamptz(6)
+
+  @@index([userId, lastSeenAt(sort: Desc)], map: "idx_sessions_user")
+  @@map("user_sessions")
+}
+
+model UserConnectorInterest {
+  userId    BigInt   @map("user_id")
+  provider  String
+  createdAt DateTime @default(now()) @map("created_at") @pg.Timestamptz(6)
+
+  @@id([userId, provider])
+  @@index([provider], map: "idx_interest_provider")
+  @@map("user_connector_interest")
+}

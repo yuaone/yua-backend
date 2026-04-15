@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YUA Workspace Settings — Redesign Mockup</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #fafafa; --surface: #fff; --border: #e5e7eb; --border-light: #f3f4f6;
+    --text: #111827; --text-2: #6b7280; --text-3: #9ca3af;
+    --accent: #6d28d9; --accent-bg: #ede9fe;
+    --danger: #ef4444; --radius: 12px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
+  }
+  body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
+
+  /* SIDEBAR */
+  .sb { width: 280px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px 0; overflow-y: auto; flex-shrink: 0; }
+  .sb-back { display: flex; align-items: center; gap: 8px; padding: 0 20px; margin-bottom: 8px; font-size: 13px; color: var(--text-3); cursor: pointer; text-decoration: none; }
+  .sb-back:hover { color: var(--text-2); }
+  .sb-ws { padding: 12px 20px 20px; border-bottom: 1px solid var(--border-light); margin-bottom: 8px; }
+  .sb-ws-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-3); margin-bottom: 6px; }
+  .sb-ws-name { font-size: 15px; font-weight: 600; }
+  .sb-group { padding: 8px 12px; }
+  .sb-group-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-3); padding: 0 8px; margin-bottom: 4px; }
+  .sb-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; cursor: pointer; transition: all 0.15s; font-size: 14px; color: var(--text-2); }
+  .sb-item:hover { background: var(--border-light); color: var(--text); }
+  .sb-item.on { background: var(--accent-bg); color: var(--accent); font-weight: 500; }
+  .sb-item svg { width: 18px; height: 18px; opacity: 0.6; flex-shrink: 0; }
+  .sb-item.on svg { opacity: 1; }
+  .tb { font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: auto; }
+  .tb-b { background: #dbeafe; color: #1d4ed8; }
+  .tb-e { background: #ede9fe; color: #6d28d9; }
+
+  /* MAIN */
+  .mn { flex: 1; overflow-y: auto; }
+  .mn-hd { padding: 24px 40px 0; max-width: 720px; }
+  .bc { font-size: 12px; color: var(--text-3); margin-bottom: 4px; }
+  .bc span { color: var(--text-2); }
+  .mn-t { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .mn-d { font-size: 14px; color: var(--text-2); margin-bottom: 28px; }
+  .ct { padding: 0 40px 60px; max-width: 720px; }
+
+  /* CARD */
+  .cd { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 20px; overflow: hidden; }
+  .cd-h { padding: 16px 24px; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; justify-content: space-between; }
+  .cd-t { font-size: 15px; font-weight: 600; }
+  .cd-b { padding: 20px 24px; }
+
+  /* PROFILE */
+  .pf { display: flex; align-items: center; gap: 20px; padding: 24px; }
+  .pf-av { width: 64px; height: 64px; border-radius: 16px; background: linear-gradient(135deg, #6d28d9, #a78bfa); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; color: #fff; flex-shrink: 0; }
+  .pf-i { flex: 1; }
+  .pf-n { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+  .pf-m { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--text-2); }
+  .pf-tier { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 20px; background: var(--accent-bg); color: var(--accent); }
+
+  /* FORM */
+  .fg { margin-bottom: 20px; }
+  .fg:last-child { margin-bottom: 0; }
+  .fl { display: block; font-size: 13px; font-weight: 500; color: var(--text-2); margin-bottom: 6px; }
+  .fi { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-family: inherit; color: var(--text); background: var(--surface); transition: border-color 0.15s; outline: none; }
+  .fi:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(109,40,217,0.1); }
+  .fi.mono { font-family: 'SF Mono','Fira Code',monospace; font-size: 12px; background: #f9fafb; color: var(--text-2); }
+  .fr { display: flex; gap: 12px; align-items: flex-end; }
+  .fr .fg { flex: 1; }
+  .fs { padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; color: var(--text); background: var(--surface); outline: none; cursor: pointer; }
+
+  /* BUTTONS */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; font-family: inherit; cursor: pointer; border: none; transition: all 0.15s; }
+  .btn-p { background: var(--text); color: #fff; }
+  .btn-p:hover { opacity: 0.85; }
+  .btn-s { background: transparent; color: var(--text-2); border: 1px solid var(--border); }
+  .btn-s:hover { background: var(--border-light); }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+  .btn-i { width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 6px; background: transparent; border: 1px solid var(--border); cursor: pointer; color: var(--text-2); transition: all 0.15s; }
+  .btn-i:hover { background: var(--border-light); color: var(--text); }
+
+  /* DETAIL ROW */
+  .dr { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-light); }
+  .dr:last-child { border-bottom: none; }
+  .dr-l { font-size: 13px; color: var(--text-2); min-width: 120px; }
+  .dr-v { font-family: 'SF Mono','Fira Code',monospace; font-size: 12px; color: var(--text-2); flex: 1; text-align: right; }
+
+  /* MEMBER */
+  .mi { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border-light); }
+  .mi:last-child { border-bottom: none; }
+  .mi-av { width: 36px; height: 36px; border-radius: 50%; background: #e5e7eb; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: var(--text-2); flex-shrink: 0; }
+  .mi-i { flex: 1; }
+  .mi-n { font-size: 14px; font-weight: 500; }
+  .mi-e { font-size: 12px; color: var(--text-3); }
+  .mi-r { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px; }
+  .r-o { background: #fef3c7; color: #92400e; }
+  .r-a { background: #dbeafe; color: #1d4ed8; }
+  .you { font-size: 10px; color: var(--text-3); margin-left: 6px; }
+
+  /* STATS */
+  .sg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
+  .sc { padding: 14px 16px; background: #f9fafb; border-radius: 8px; text-align: center; }
+  .sc-v { font-size: 18px; font-weight: 700; }
+  .sc-l { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
+  /* EMPTY */
+  .es { text-align: center; padding: 40px 20px; color: var(--text-3); }
+  .es-i { font-size: 32px; margin-bottom: 8px; opacity: 0.3; }
+  .es-t { font-size: 14px; font-weight: 500; margin-bottom: 4px; color: var(--text-2); }
+  .es-d { font-size: 13px; }
+
+  /* CONFIG GRID */
+  .cg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+
+  /* TABS */
+  .tabs { position: fixed; bottom: 20px; right: 20px; display: flex; gap: 8px; background: rgba(0,0,0,0.8); padding: 8px; border-radius: 12px; z-index: 100; }
+  .tab { padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.6); cursor: pointer; border: none; background: transparent; font-family: inherit; }
+  .tab:hover { color: #fff; }
+  .tab.on { background: rgba(255,255,255,0.15); color: #fff; }
+</style>
+</head>
+<body>
+
+<aside class="sb">
+  <a class="sb-back" href="#">← 채팅으로 돌아가기</a>
+  <div class="sb-ws">
+    <div class="sb-ws-label">Workspace</div>
+    <div class="sb-ws-name">Personal Workspace</div>
+  </div>
+  <div class="sb-group">
+    <div class="sb-group-label">Core</div>
+    <div class="sb-item on" onclick="go('general',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      General
+    </div>
+    <div class="sb-item" onclick="go('team',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Team
+    </div>
+    <div class="sb-item" onclick="go('invite',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      Invite Links
+    </div>
+    <div class="sb-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      Domains <span class="tb tb-b">Biz</span>
+    </div>
+    <div class="sb-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      Approval <span class="tb tb-b">Biz</span>
+    </div>
+  </div>
+  <div class="sb-group">
+    <div class="sb-group-label">Enterprise</div>
+    <div class="sb-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+      SSO <span class="tb tb-e">Ent</span>
+    </div>
+    <div class="sb-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Permissions <span class="tb tb-e">Ent</span>
+    </div>
+  </div>
+  <div class="sb-group">
+    <div class="sb-group-label">Security</div>
+    <div class="sb-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Audit Log <span class="tb tb-b">Biz</span>
+    </div>
+    <div class="sb-item" style="color:var(--danger);">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      Danger Zone
+    </div>
+  </div>
+</aside>
+
+<main class="mn">
+  <!-- GENERAL -->
+  <div id="s-general">
+    <div class="mn-hd"><div class="bc">Workspace <span>›</span> General</div><h1 class="mn-t">General</h1><p class="mn-d">워크스페이스 정보와 브랜딩을 관리합니다.</p></div>
+    <div class="ct">
+      <div class="cd"><div class="pf">
+        <div class="pf-av">P</div>
+        <div class="pf-i">
+          <div class="pf-n">Personal Workspace</div>
+          <div class="pf-m">
+            <span class="pf-tier">✦ Enterprise</span>
+            <span style="display:inline-flex;align-items:center;gap:4px;">👤 1 member</span>
+          </div>
+        </div>
+        <button class="btn btn-s btn-sm">Edit</button>
+      </div></div>
+      <div class="cd"><div class="cd-h"><span class="cd-t">Workspace Info</span><button class="btn btn-p btn-sm">💾 Save</button></div>
+        <div class="cd-b">
+          <div class="fg"><label class="fl">Workspace Name</label><input class="fi" value="Personal Workspace" /></div>
+          <div class="fg"><label class="fl">Icon URL (optional)</label><input class="fi" placeholder="https://example.com/icon.png" /></div>
+        </div>
+      </div>
+      <div class="cd"><div class="cd-h"><span class="cd-t">Workspace Details</span></div>
+        <div class="cd-b">
+          <div class="dr"><span class="dr-l">Org ID</span><span class="dr-v">97785933-7c12-4ad2-b888-7b4d864e1a0b</span></div>
+          <div class="dr"><span class="dr-l">Workspace ID</span><span class="dr-v">97785933-7c12-4ad2-b888-7b4d864e1a0b</span><button class="btn-i" style="margin-left:8px;">📋</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TEAM -->
+  <div id="s-team" style="display:none;">
+    <div class="mn-hd"><div class="bc">Workspace <span>›</span> Team</div><h1 class="mn-t">Team</h1><p class="mn-d">워크스페이스 멤버, 초대, 권한 변경을 관리합니다.</p></div>
+    <div class="ct">
+      <div class="cd"><div class="cd-h"><span class="cd-t">Invite Member</span></div>
+        <div class="cd-b"><div class="fr">
+          <div class="fg"><input class="fi" placeholder="초대할 이메일 주소" /></div>
+          <select class="fs" style="width:120px;"><option>Member</option><option>Admin</option><option>Viewer</option></select>
+          <button class="btn btn-p">👤+ Invite</button>
+        </div></div>
+      </div>
+      <div class="cd"><div class="cd-h"><span class="cd-t">Members</span><span style="font-size:12px;color:var(--text-3);">1 member</span></div>
+        <div class="cd-b">
+          <div class="mi"><div class="mi-av">D</div><div class="mi-i"><div class="mi-n">dmsal020813 <span class="you">(You)</span></div><div class="mi-e">dmsal020813@gmail.com</div></div><span class="mi-r r-o">owner</span></div>
+        </div>
+      </div>
+      <div class="cd"><div class="cd-h"><span class="cd-t">Pending Invites</span></div>
+        <div class="cd-b"><div class="es"><div class="es-i">📬</div><div class="es-t">No pending invites</div><div class="es-d">초대를 보내면 여기에 표시됩니다.</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INVITE LINKS -->
+  <div id="s-invite" style="display:none;">
+    <div class="mn-hd"><div class="bc">Workspace <span>›</span> Invite Links</div><h1 class="mn-t">Invite Links</h1><p class="mn-d">워크스페이스 참여용 링크를 생성하고 만료 조건을 설정합니다.</p></div>
+    <div class="ct">
+      <div class="cd"><div class="cd-h"><span class="cd-t">Link Settings</span><button class="btn btn-p btn-sm">+ Create Invite Link</button></div>
+        <div class="cd-b"><div class="cg">
+          <div class="fg"><label class="fl">Assigned Role</label><select class="fs" style="width:100%;"><option>Member</option><option>Admin</option><option>Viewer</option></select></div>
+          <div class="fg"><label class="fl">Max Uses</label><input class="fi" value="Unlimited" /></div>
+          <div class="fg"><label class="fl">Expires On</label><input class="fi" type="date" /></div>
+        </div></div>
+      </div>
+      <div class="cd"><div class="cd-h"><span class="cd-t">Active Link</span></div>
+        <div class="cd-b"><div class="es"><div class="es-i">🔗</div><div class="es-t">No active invite link</div><div class="es-d">링크를 생성하면 설정한 역할과 만료 조건으로 공유할 수 있습니다.</div></div></div>
+      </div>
+      <div class="cd" style="opacity:0.4;"><div class="cd-h"><span class="cd-t">Link Stats</span><span style="font-size:12px;color:var(--text-3);">링크 생성 후 표시됩니다</span></div>
+        <div class="cd-b"><div class="sg">
+          <div class="sc"><div class="sc-v">0 / ∞</div><div class="sc-l">Uses</div></div>
+          <div class="sc"><div class="sc-v">—</div><div class="sc-l">Expires</div></div>
+          <div class="sc"><div class="sc-v">Member</div><div class="sc-l">Role</div></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="tabs">
+  <button class="tab on" onclick="go('general',this)">General</button>
+  <button class="tab" onclick="go('team',this)">Team</button>
+  <button class="tab" onclick="go('invite',this)">Invite Links</button>
+</div>
+
+<script>
+function go(id, el) {
+  document.querySelectorAll('[id^="s-"]').forEach(e => e.style.display = 'none');
+  document.getElementById('s-' + id).style.display = 'block';
+  document.querySelectorAll('.sb-item').forEach(e => e.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(e => e.classList.remove('on'));
+  if (el) el.classList.add('on');
+  const map = { general: 0, team: 1, invite: 2 };
+  const items = document.querySelectorAll('.sb-item');
+  if (map[id] !== undefined && items[map[id]]) items[map[id]].classList.add('on');
+}
+</script>
+</body>
+</html>
