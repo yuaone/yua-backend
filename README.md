@@ -14,7 +14,7 @@ Multi-runtime AI backend for YUA. Chat, reasoning, agents, multimodal, MCP, skil
 
 This is not a wrapper around `openai.chat.completions`. It's the full pipeline from HTTP entry to LLM token stream, written from scratch, with these modules separated:
 
-- **Chat entry** — `chat-controller` accepts `POST /chat` and opens an SSE session.
+- **Chat entry** — [`chat-controller`](https://github.com/yuaone/yua-backend/blob/main/src/control/chat-controller.ts) accepts `POST /chat` and opens an SSE session.
 - **Six OutModes** — FAST · NORMAL · DEEP · SEARCH · RESEARCH · ENGINE_GUIDE, each routed to its own path handler in `chat-engine-router.ts`.
 - **Decision Orchestrator** — single owner of intent, policy, path, and memory intent. ChatEngine doesn't classify; it compiles whatever the orchestrator decided.
 - **Reasoning Engine** — zero LLM calls. Pure functions + weighted heuristics produce turn intent / depth / cognitive load / flow anchors.
@@ -204,8 +204,8 @@ flowchart TB
 
 The orchestrator splits on input type:
 
-- **Image generation** — `media-orchestrator` takes two paths. Pure-semantic prompts go through `scene-builder` → `openai-image-renderer`. If the prompt comes with structured data (`computed.series`), a Python visualization script (`bar-chart`) renders the chart and `composite-image` merges them. Identical inputs are deduped by hash (`findCompositeByHash`).
-- **Vision analysis** — `vision-orchestrator` analyzes attached images, either as a hint into scene construction or as a standalone analysis.
+- **Image generation** — [`media-orchestrator`](https://github.com/yuaone/yua-backend/blob/main/src/ai/image/media-orchestrator.ts) takes two paths. Pure-semantic prompts go through `scene-builder` → `openai-image-renderer`. If the prompt comes with structured data (`computed.series`), a Python visualization script (`bar-chart`) renders the chart and `composite-image` merges them. Identical inputs are deduped by hash (`findCompositeByHash`).
+- **Vision analysis** — [`vision-orchestrator`](https://github.com/yuaone/yua-backend/blob/main/src/ai/vision/vision-orchestrator.ts) analyzes attached images, either as a hint into scene construction or as a standalone analysis.
 - **File analysis** — `yua-file-analyzer` dispatches to per-extension engines (pdf · docx · hwp · csv). Output can be re-rendered to PDF via `markdown-to-pdf`.
 
 Stage events like `StreamEngine.publish({event: "stage", stage: ANALYZING_IMAGE})` are emitted to SSE in real time so the UI can show progress per stage.
@@ -282,17 +282,17 @@ Every request passes through gates before reaching the LLM:
 
 ### Memory layers (4 tiers)
 
-`src/ai/memory/index.ts` exposes the memory hub:
+[`src/ai/memory/index.ts`](https://github.com/yuaone/yua-backend/blob/main/src/ai/memory/index.ts) exposes the memory hub:
 
 - **Short** (`ShortMemoryEngine`) — short-term memory within the same thread. Key facts from recent turns.
 - **Long** (`LongMemoryEngine`) — long-term per-user memory. Persona, preferences, recurring context.
-- **Cross** (`cross-memory-orchestrator`) — workspace-level memory across threads. Pulls in decisions made in other conversations.
+- **Cross** ([`cross-memory-orchestrator`](https://github.com/yuaone/yua-backend/blob/main/src/ai/memory/cross/cross-memory-orchestrator.ts)) — workspace-level memory across threads. Pulls in decisions made in other conversations.
 - **Cache** (`FastCache`) — in-memory cache on the hot path; we don't hit DB every turn.
 - **Vector sync** (`MemoryVectorSync`) — embeds memory text so it's searchable.
 
 `MemoryAction` has five variants — `NONE` / `SHORT` / `LONG` / `PROFILE` / `PROJECT`. DecisionOrchestrator decides `memoryIntent`; `map-intent-to-action` translates that into the actual write target.
 
-Workspace-scoped memory rules are cached in-memory by `memory-rule-context.ts`. Only restart or an explicit admin call invalidates it, so the hot path cost is essentially zero.
+Workspace-scoped memory rules are cached in-memory by [`memory-rule-context.ts`](https://github.com/yuaone/yua-backend/blob/main/src/ai/memory/runtime/memory-rule-context.ts). Only restart or an explicit admin call invalidates it, so the hot path cost is essentially zero.
 
 ### Cross-thread memory attachment
 
@@ -436,7 +436,7 @@ If the conditions match, gpt-4.1-mini generates a short summary (max_tokens=300)
 
 ### Continuity Capsule
 
-`src/ai/prompt/continuity-capsule.ts` packages cross-turn continuity. It compresses the previous turn's key facts, open questions, and next-step anchors into a small capsule injected into the next turn's prompt. Short and deterministic — minimal tokens, no broken flow.
+[`src/ai/prompt/continuity-capsule.ts`](https://github.com/yuaone/yua-backend/blob/main/src/ai/prompt/continuity-capsule.ts) packages cross-turn continuity. It compresses the previous turn's key facts, open questions, and next-step anchors into a small capsule injected into the next turn's prompt. Short and deterministic — minimal tokens, no broken flow.
 
 ### Prompt assembly (PromptRuntime)
 
@@ -470,7 +470,7 @@ When done, `PromptBuilder` (or `PromptBuilderDeep` in DEEP mode) renders the fin
 | Some domains | **MySQL** (`pool`) | a few backend tables |
 | Cache / session | **Redis** | stream session bridge · rate limit · cache keys |
 | Vector | Postgres + `createOpenAIEmbedder` | file RAG · skill retrieval |
-| Migrations | `migrations/` SQL | schema changes |
+| Migrations | [`migrations/`](https://github.com/yuaone/yua-backend/tree/main/migrations) SQL | schema changes |
 
 `updateConversationSummary` runs at end of turn to refresh the conversation summary so the next turn starts with a shorter context. `file-session-repository` persists attachment sessions so follow-up turns can refer to the same files.
 
@@ -480,31 +480,31 @@ When done, `PromptBuilder` (or `PromptBuilderDeep` in DEEP mode) renders the fin
 
 | Path | Role |
 |------|------|
-| `src/control/chat-controller.ts` (~1.3K lines) | HTTP entry, auth, SSE register, dependency wiring |
-| `src/routes/stream-router.ts` | `GET /stream` SSE endpoint |
-| `src/ai/chat/chat-engine-router.ts` | OutMode → 6 path dispatch |
-| `src/ai/engines/chat-engine.ts` (~2.3K lines) | path dispatch and response composition |
-| `src/ai/decision/decision-orchestrator.ts` (~1.9K lines) | intent / policy / path / memory intent |
-| `src/ai/reasoning/reasoning-engine.ts` | pure-function reasoning, anchor / depth / load |
-| `src/ai/execution/execution-engine.ts` (~4.2K lines) | stream lifecycle, tool / skill / MCP execution |
-| `src/ai/chat/runtime/openai-runtime.ts` (~1.2K lines) | OpenAI Responses API call + event normalization |
-| `src/ai/chat/runtime/prompt-runtime.ts` (~1.1K lines) | prompt assembly, persona / skills / RAG injection |
-| `src/ai/image/media-orchestrator.ts` | multimodal dispatch |
-| `src/ai/asset/execution/` | document (pdf/docx/hwp) + image asset pipelines |
-| `src/connectors/mcp/` | MCP client, tool adapter, tool sync |
-| `src/skills/` | skills registry · retrieval · injector |
-| `src/agent/security/` | sandbox, secret detection, audit logger |
-| `src/ai/engines/stream-engine.ts` | SSE stream session manager + Redis bridge |
-| `src/db/redis.ts` | Redis pub / sub / cache helpers |
-| `src/ai/compute/` | compute-policy · compute-gate (cost control) |
-| `src/ai/selfcheck/` | completion-verdict-engine · failure-surface-engine |
-| `src/ai/telemetry/` | raw-event-writer · failure-surface-writer |
+| [`src/control/chat-controller.ts`](https://github.com/yuaone/yua-backend/blob/main/src/control/chat-controller.ts) (~1.3K lines) | HTTP entry, auth, SSE register, dependency wiring |
+| [`src/routes/stream-router.ts`](https://github.com/yuaone/yua-backend/blob/main/src/routes/stream-router.ts) | `GET /stream` SSE endpoint |
+| [`src/ai/chat/chat-engine-router.ts`](https://github.com/yuaone/yua-backend/blob/main/src/ai/chat/chat-engine-router.ts) | OutMode → 6 path dispatch |
+| [`src/ai/engines/chat-engine.ts`](https://github.com/yuaone/yua-backend/blob/main/src/ai/engines/chat-engine.ts) (~2.3K lines) | path dispatch and response composition |
+| [`src/ai/decision/decision-orchestrator.ts`](https://github.com/yuaone/yua-backend/blob/main/src/ai/decision/decision-orchestrator.ts) (~1.9K lines) | intent / policy / path / memory intent |
+| [`src/ai/reasoning/reasoning-engine.ts`](https://github.com/yuaone/yua-backend/blob/main/src/ai/reasoning/reasoning-engine.ts) | pure-function reasoning, anchor / depth / load |
+| [`src/ai/execution/execution-engine.ts`](https://github.com/yuaone/yua-backend/blob/main/src/ai/execution/execution-engine.ts) (~4.2K lines) | stream lifecycle, tool / skill / MCP execution |
+| [`src/ai/chat/runtime/openai-runtime.ts`](https://github.com/yuaone/yua-backend/blob/main/src/ai/chat/runtime/openai-runtime.ts) (~1.2K lines) | OpenAI Responses API call + event normalization |
+| [`src/ai/chat/runtime/prompt-runtime.ts`](https://github.com/yuaone/yua-backend/blob/main/src/ai/chat/runtime/prompt-runtime.ts) (~1.1K lines) | prompt assembly, persona / skills / RAG injection |
+| [`src/ai/image/media-orchestrator.ts`](https://github.com/yuaone/yua-backend/blob/main/src/ai/image/media-orchestrator.ts) | multimodal dispatch |
+| [`src/ai/asset/execution/`](https://github.com/yuaone/yua-backend/tree/main/src/ai/asset/execution) | document (pdf/docx/hwp) + image asset pipelines |
+| [`src/connectors/mcp/`](https://github.com/yuaone/yua-backend/tree/main/src/connectors/mcp) | MCP client, tool adapter, tool sync |
+| [`src/skills/`](https://github.com/yuaone/yua-backend/tree/main/src/skills) | skills registry · retrieval · injector |
+| [`src/agent/security/`](https://github.com/yuaone/yua-backend/tree/main/src/agent/security) | sandbox, secret detection, audit logger |
+| [`src/ai/engines/stream-engine.ts`](https://github.com/yuaone/yua-backend/blob/main/src/ai/engines/stream-engine.ts) | SSE stream session manager + Redis bridge |
+| [`src/db/redis.ts`](https://github.com/yuaone/yua-backend/blob/main/src/db/redis.ts) | Redis pub / sub / cache helpers |
+| [`src/ai/compute/`](https://github.com/yuaone/yua-backend/tree/main/src/ai/compute) | compute-policy · compute-gate (cost control) |
+| [`src/ai/selfcheck/`](https://github.com/yuaone/yua-backend/tree/main/src/ai/selfcheck) | completion-verdict-engine · failure-surface-engine |
+| [`src/ai/telemetry/`](https://github.com/yuaone/yua-backend/tree/main/src/ai/telemetry) | raw-event-writer · failure-surface-writer |
 
-7 runtimes live under `src/ai/chat/runtime/` — chat · code · context · image · safety · openai · prompt.
+7 runtimes live under [`src/ai/chat/runtime/`](https://github.com/yuaone/yua-backend/tree/main/src/ai/chat/runtime) — chat · code · context · image · safety · openai · prompt.
 
 ## Self-QA
 
-`qa-reports/2026-04-22/` — six per-module audits:
+[`qa-reports/2026-04-22/`](https://github.com/yuaone/yua-backend/tree/main/qa-reports/2026-04-22) — six per-module audits:
 
 - `01_openai_runtime.md`
 - `02_prompt_builder.md`
@@ -562,6 +562,6 @@ Not OSS yet. Production code; opening parts of the system. License pending.
 
 ## About
 
-I built this end to end — `chat-controller` to `openai-runtime`, image generation, file analysis, MCP, skills, decision, reasoning, the verifier loop. One person, four months.
+I built this end to end — [`chat-controller`](https://github.com/yuaone/yua-backend/blob/main/src/control/chat-controller.ts) to [`openai-runtime`](https://github.com/yuaone/yua-backend/blob/main/src/ai/chat/runtime/openai-runtime.ts), image generation, file analysis, MCP, skills, decision, reasoning, the verifier loop. One person, four months.
 
 If you're hiring for this kind of work or want to collaborate on something similar, feel free to reach out via GitHub Issues or email.
